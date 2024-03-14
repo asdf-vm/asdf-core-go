@@ -157,7 +157,6 @@ func TestRemove(t *testing.T) {
 	t.Run("returns error when invalid plugin name is given", func(t *testing.T) {
 		err := Remove(conf, "foo/bar/baz")
 		assert.NotNil(t, err)
-
 		expectedErrMsg := "is invalid. Name may only contain lowercase letters, numbers, '_', and '-'"
 		assert.ErrorContains(t, err, expectedErrMsg)
 	})
@@ -170,6 +169,57 @@ func TestRemove(t *testing.T) {
 		_, err = os.Stat(pluginDir)
 		assert.NotNil(t, err)
 		assert.True(t, os.IsNotExist(err))
+	})
+}
+
+func TestUpdate(t *testing.T) {
+	testDataDir := t.TempDir()
+	conf := config.Config{DataDir: testDataDir}
+
+	err := Add(conf, testPluginName, testRepo)
+	assert.Nil(t, err)
+
+	t.Run("returns error when plugin with name does not exist", func(t *testing.T) {
+		err := Update(conf, "nonexistant", "")
+
+		assert.NotNil(t, err)
+		expectedErrMsg := "no such plugin: nonexistant"
+		assert.ErrorContains(t, err, expectedErrMsg)
+	})
+
+	t.Run("returns error when plugin repo does not exist", func(t *testing.T) {
+		badPluginName := "badplugin"
+		badRepo := PluginDirectory(testDataDir, badPluginName)
+		os.MkdirAll(badRepo, 0777)
+
+		err := Update(conf, badPluginName, "")
+
+		assert.NotNil(t, err)
+		expectedErrMsg := "unable to open plugin: repository does not exist"
+		assert.ErrorContains(t, err, expectedErrMsg)
+	})
+
+	t.Run("updates plugin when plugin with name exists", func(t *testing.T) {
+		err := Update(conf, testPluginName, "")
+		assert.Nil(t, err)
+
+		// TODO: Check that plugin was updated to latest
+	})
+
+	t.Run("does not return error when plugin is already updated", func(t *testing.T) {
+		// update plugin twice to test already updated case
+		err := Update(conf, testPluginName, "")
+		assert.Nil(t, err)
+		err = Update(conf, testPluginName, "")
+		assert.Nil(t, err)
+	})
+
+	t.Run("updates plugin to ref when plugin with name and ref exist", func(t *testing.T) {
+		ref := "foobar"
+		err := Update(conf, testPluginName, ref)
+		assert.Nil(t, err)
+
+		// TODO: Check that plugin was updated to ref
 	})
 }
 
