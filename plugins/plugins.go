@@ -134,6 +134,50 @@ func Remove(config config.Config, pluginName string) error {
 	return os.RemoveAll(pluginDir)
 }
 
+func Update(config config.Config, pluginName, ref string) error {
+	exists, err := PluginExists(config.DataDir, pluginName)
+
+	if err != nil {
+		return fmt.Errorf("unable to check if plugin exists: %w", err)
+	}
+
+	if !exists {
+		return fmt.Errorf("no such plugin: %s", pluginName)
+	}
+
+	pluginDir := PluginDirectory(config.DataDir, pluginName)
+	repo, err := git.PlainOpen(pluginDir)
+
+	if err != nil {
+		return fmt.Errorf("unable to open plugin: %w", err)
+	}
+
+	if err != nil {
+		return err
+	}
+
+	err = repo.Fetch(&git.FetchOptions{RemoteName: "origin", Force: true})
+
+	if err != nil {
+		return err
+	}
+
+	worktree, err := repo.Worktree()
+
+	if err != nil {
+		return err
+	}
+
+	// TODO: Need to add logic to compute default branch
+	err = worktree.Checkout(&git.CheckoutOptions{Branch: "master"})
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func PluginExists(dataDir, pluginName string) (bool, error) {
 	pluginDir := PluginDirectory(dataDir, pluginName)
 	fileInfo, err := os.Stat(pluginDir)
