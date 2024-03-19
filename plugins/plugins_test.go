@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/go-git/go-git/v5"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -220,6 +221,29 @@ func TestUpdate(t *testing.T) {
 		assert.Nil(t, err)
 
 		// TODO: Check that plugin was updated to ref
+	})
+}
+
+func TestPluginDefaultBranch(t *testing.T) {
+	testRepoPath, err := installMockPluginRepo(t.TempDir(), testPluginName)
+	assert.Nil(t, err)
+
+	repo, err := git.PlainOpen(testRepoPath)
+	assert.Nil(t, err)
+
+	t.Run("returns default branch when remote named 'origin' exists", func(t *testing.T) {
+		defaultBranch, err := PluginDefaultBranch(repo)
+		assert.Nil(t, err)
+		assert.Equal(t, "master", defaultBranch)
+	})
+
+	t.Run("returns error when no remote named 'origin' exists", func(t *testing.T) {
+		err := repo.DeleteRemote("origin")
+		assert.Nil(t, err)
+
+		defaultBranch, err := PluginDefaultBranch(repo)
+		assert.ErrorContains(t, err, "remote not found")
+		assert.Equal(t, "", defaultBranch)
 	})
 }
 

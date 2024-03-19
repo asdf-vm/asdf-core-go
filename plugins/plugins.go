@@ -7,10 +7,12 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 
 	"github.com/go-git/go-git/v5"
 )
 
+const remoteName = "origin"
 const dataDirPlugins = "plugins"
 const invalidPluginNameMsg = "'%q' is invalid. Name may only contain lowercase letters, numbers, '_', and '-'"
 const pluginAlreadyExists = "plugin named %q already added"
@@ -172,6 +174,27 @@ func Update(config config.Config, pluginName, ref string) (string, error) {
 	}
 
 	return "master", nil
+}
+
+func PluginDefaultBranch(repo *git.Repository) (ref string, err error) {
+	remote, err := repo.Remote(remoteName)
+	if err != nil {
+		return ref, err
+	}
+
+	refs, err := remote.List(&git.ListOptions{})
+	if err != nil {
+		return ref, err
+	}
+
+	for _, r := range refs {
+		if r.Name().IsBranch() {
+			segments := strings.Split(r.Name().String(), "/")
+			ref = segments[len(segments)-1]
+		}
+	}
+
+	return ref, err
 }
 
 func PluginExists(dataDir, pluginName string) (bool, error) {
