@@ -2,17 +2,14 @@ package plugins
 
 import (
 	"asdf/config"
+	gitPlugin "asdf/plugins/git"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
-	"strings"
-
-	"github.com/go-git/go-git/v5"
 )
 
-const remoteName = "origin"
 const dataDirPlugins = "plugins"
 const invalidPluginNameMsg = "'%q' is invalid. Name may only contain lowercase letters, numbers, '_', and '-'"
 const pluginAlreadyExists = "plugin named %q already added"
@@ -37,7 +34,7 @@ func List(config config.Config, urls, refs bool) (plugins []Plugin, err error) {
 				var url string
 				var refString string
 				location := filepath.Join(pluginsDir, file.Name())
-				repo, err := git.PlainOpen(location)
+				plugin := gitPlugin.NewGitPlugin(location)
 
 				// TODO: Improve these error messages
 				if err != nil {
@@ -45,8 +42,7 @@ func List(config config.Config, urls, refs bool) (plugins []Plugin, err error) {
 				}
 
 				if refs {
-					ref, err := repo.Head()
-					refString = ref.Hash().String()
+					refString, err = plugin.Head()
 
 					if err != nil {
 						return plugins, err
@@ -54,8 +50,7 @@ func List(config config.Config, urls, refs bool) (plugins []Plugin, err error) {
 				}
 
 				if urls {
-					remotes, err := repo.Remotes()
-					url = remotes[0].Config().URLs[0]
+					url, err = plugin.RemoteURL()
 
 					if err != nil {
 						return plugins, err
@@ -103,15 +98,7 @@ func Add(config config.Config, pluginName, pluginURL string) error {
 		return fmt.Errorf("unable to create plugin directory: %w", err)
 	}
 
-	_, err = git.PlainClone(pluginDir, false, &git.CloneOptions{
-		URL: pluginURL,
-	})
-
-	if err != nil {
-		return fmt.Errorf("unable to clone plugin: %w", err)
-	}
-
-	return nil
+	return gitPlugin.NewGitPlugin(pluginDir).Clone(pluginURL)
 }
 
 func Remove(config config.Config, pluginName string) error {
@@ -148,58 +135,19 @@ func Update(config config.Config, pluginName, ref string) (string, error) {
 	}
 
 	pluginDir := PluginDirectory(config.DataDir, pluginName)
-	repo, err := git.PlainOpen(pluginDir)
 
-	if err != nil {
-		return "", fmt.Errorf("unable to open plugin: %w", err)
-	}
+	plugin := gitPlugin.NewGitPlugin(pluginDir)
 
-	err = repo.Fetch(&git.FetchOptions{RemoteName: "origin", Force: true})
-
-	if err != nil {
-		return "", err
-	}
-
-	worktree, err := repo.Worktree()
-
-	if err != nil {
-		return "", err
-	}
-
-	// TODO: Need to add logic to compute default branch
-	err = worktree.Checkout(&git.CheckoutOptions{Branch: "master"})
-
-	if err != nil {
-		return "", err
-	}
-
-	return "master", nil
-}
-
-func PluginDefaultBranch(repo *git.Repository) (ref string, err error) {
-	remote, err := repo.Remote(remoteName)
-	if err != nil {
-		return ref, err
-	}
-
-	refs, err := remote.List(&git.ListOptions{})
-	if err != nil {
-		return ref, err
-	}
-
-	for _, r := range refs {
-		if r.Name().IsBranch() {
-			segments := strings.Split(r.Name().String(), "/")
-			ref = segments[len(segments)-1]
-		}
-	}
-
-	return ref, err
+	return plugin.Update(ref)
 }
 
 func PluginExists(dataDir, pluginName string) (bool, error) {
 	pluginDir := PluginDirectory(dataDir, pluginName)
-	fileInfo, err := os.Stat(pluginDir)
+	return directoryExists(pluginDir)
+}
+
+func directoryExists(dir string) (bool, error) {
+	fileInfo, err := os.Stat(dir)
 	if errors.Is(err, os.ErrNotExist) {
 		return false, nil
 	}
