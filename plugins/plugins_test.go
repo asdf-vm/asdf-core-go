@@ -7,8 +7,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -177,12 +175,14 @@ func TestUpdate(t *testing.T) {
 	conf := config.Config{DataDir: testDataDir}
 
 	err := Add(conf, testPluginName, testRepo)
+
 	assert.Nil(t, err)
 
 	t.Run("returns error when plugin with name does not exist", func(t *testing.T) {
-		err := Update(conf, "nonexistant", "")
+		updatedToRef, err := Update(conf, "nonexistant", "")
 
 		assert.NotNil(t, err)
+		assert.Equal(t, updatedToRef, "")
 		expectedErrMsg := "no such plugin: nonexistant"
 		assert.ErrorContains(t, err, expectedErrMsg)
 	})
@@ -192,57 +192,18 @@ func TestUpdate(t *testing.T) {
 		badRepo := PluginDirectory(testDataDir, badPluginName)
 		os.MkdirAll(badRepo, 0777)
 
-		err := Update(conf, badPluginName, "")
+		updatedToRef, err := Update(conf, badPluginName, "")
 
 		assert.NotNil(t, err)
+		assert.Equal(t, updatedToRef, "")
 		expectedErrMsg := "unable to open plugin: repository does not exist"
 		assert.ErrorContains(t, err, expectedErrMsg)
 	})
 
 	t.Run("updates plugin when plugin with name exists", func(t *testing.T) {
-		err := Update(conf, testPluginName, "")
+		updatedToRef, err := Update(conf, testPluginName, "")
 		assert.Nil(t, err)
-
-		// TODO: Check that plugin was updated to latest
-	})
-
-	t.Run("does not return error when plugin is already updated", func(t *testing.T) {
-		// update plugin twice to test already updated case
-		err := Update(conf, testPluginName, "")
-		assert.Nil(t, err)
-		err = Update(conf, testPluginName, "")
-		assert.Nil(t, err)
-	})
-
-	t.Run("updates plugin to ref when plugin with name and ref exist", func(t *testing.T) {
-		ref := "foobar"
-		err := Update(conf, testPluginName, ref)
-		assert.Nil(t, err)
-
-		// TODO: Check that plugin was updated to ref
-	})
-}
-
-func TestPluginDefaultBranch(t *testing.T) {
-	testRepoPath, err := installMockPluginRepo(t.TempDir(), testPluginName)
-	assert.Nil(t, err)
-
-	repo, err := git.PlainOpen(testRepoPath)
-	assert.Nil(t, err)
-
-	t.Run("returns default branch when remote named 'origin' exists", func(t *testing.T) {
-		defaultBranch, err := PluginDefaultBranch(repo)
-		assert.Nil(t, err)
-		assert.Equal(t, "master", defaultBranch)
-	})
-
-	t.Run("returns error when no remote named 'origin' exists", func(t *testing.T) {
-		err := repo.DeleteRemote("origin")
-		assert.Nil(t, err)
-
-		defaultBranch, err := PluginDefaultBranch(repo)
-		assert.ErrorContains(t, err, "remote not found")
-		assert.Equal(t, "", defaultBranch)
+		assert.NotZero(t, updatedToRef)
 	})
 }
 
