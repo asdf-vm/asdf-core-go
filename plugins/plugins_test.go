@@ -2,14 +2,13 @@ package plugins
 
 import (
 	"asdf/config"
-	"fmt"
+	"asdf/plugins/plugintest"
 	"os"
-	"os/exec"
-	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -22,7 +21,7 @@ const (
 func TestList(t *testing.T) {
 	testDataDir := t.TempDir()
 	conf := config.Config{DataDir: testDataDir}
-	testRepo, err := installMockPluginRepo(testDataDir, testPluginName)
+	testRepo, err := plugintest.InstallMockPluginRepo(testDataDir, testPluginName)
 	assert.Nil(t, err)
 
 	err = Add(conf, testPluginName, testRepo)
