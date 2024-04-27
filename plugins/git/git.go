@@ -10,7 +10,7 @@ import (
 
 const remoteName = "origin"
 
-type gitPlugin struct {
+type GitPlugin struct {
 	directory string
 }
 
@@ -21,11 +21,11 @@ type PluginOps interface {
 	Update(ref string) (string, error)
 }
 
-func NewGitPlugin(directory string) gitPlugin {
-	return gitPlugin{directory: directory}
+func NewGitPlugin(directory string) GitPlugin {
+	return GitPlugin{directory: directory}
 }
 
-func (g gitPlugin) Clone(pluginURL string) error {
+func (g GitPlugin) Clone(pluginURL string) error {
 	_, err := git.PlainClone(g.directory, false, &git.CloneOptions{
 		URL: pluginURL,
 	})
@@ -37,7 +37,7 @@ func (g gitPlugin) Clone(pluginURL string) error {
 	return nil
 }
 
-func (g gitPlugin) Head() (string, error) {
+func (g GitPlugin) Head() (string, error) {
 	repo, err := git.PlainOpen(g.directory)
 
 	// TODO: Improve these error messages
@@ -53,7 +53,7 @@ func (g gitPlugin) Head() (string, error) {
 	return ref.Hash().String(), nil
 }
 
-func (g gitPlugin) RemoteURL() (string, error) {
+func (g GitPlugin) RemoteURL() (string, error) {
 	repo, err := git.PlainOpen(g.directory)
 
 	// TODO: Improve these error messages
@@ -69,7 +69,7 @@ func (g gitPlugin) RemoteURL() (string, error) {
 	return remotes[0].Config().URLs[0], nil
 }
 
-func (g gitPlugin) Update(ref string) (string, error) {
+func (g GitPlugin) Update(ref string) (string, error) {
 	repo, err := git.PlainOpen(g.directory)
 
 	if err != nil {
