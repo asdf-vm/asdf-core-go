@@ -16,29 +16,6 @@ const (
 	testPluginName = "lua"
 )
 
-func TestPluginDefaultBranch(t *testing.T) {
-	testRepoPath, err := plugintest.InstallMockPluginRepo(t.TempDir(), testPluginName)
-	assert.Nil(t, err)
-
-	repo, err := git.PlainOpen(testRepoPath)
-	assert.Nil(t, err)
-
-	t.Run("returns default branch when remote named 'origin' exists", func(t *testing.T) {
-		defaultBranch, err := pluginDefaultBranch(repo)
-		assert.Nil(t, err)
-		assert.Equal(t, "master", defaultBranch)
-	})
-
-	t.Run("returns error when no remote named 'origin' exists", func(t *testing.T) {
-		err := repo.DeleteRemote("origin")
-		assert.Nil(t, err)
-
-		defaultBranch, err := pluginDefaultBranch(repo)
-		assert.ErrorContains(t, err, "remote not found")
-		assert.Equal(t, "", defaultBranch)
-	})
-}
-
 func TestGitPluginClone(t *testing.T) {
 	t.Run("when plugin name is valid but URL is invalid prints an error", func(t *testing.T) {
 		tempDir := t.TempDir()

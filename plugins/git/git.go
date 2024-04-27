@@ -2,7 +2,6 @@ package git
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/go-git/go-git/v5"
 	gitConfig "github.com/go-git/go-git/v5/config"
@@ -80,22 +79,30 @@ func (g gitPlugin) Update(ref string) (string, error) {
 	var checkoutOptions git.CheckoutOptions
 
 	if ref == "" {
-		ref, err = pluginDefaultBranch(repo)
+		// If no ref is provided checkout latest commit on current branch
+		head, err := repo.Head()
 
 		if err != nil {
 			return "", err
 		}
 
-		checkoutOptions = git.CheckoutOptions{Branch: plumbing.NewBranchReferenceName(ref), Force: true}
+		if head.Name().IsBranch() {
+			// If on a branch checkout the latest version of it from the remote
+			currentBranch := head.Name()
+			ref = currentBranch.String()
+			checkoutOptions = git.CheckoutOptions{Branch: currentBranch, Force: true}
+		} else {
+			return "", fmt.Errorf("not on a branch, unable to update")
+		}
 	} else {
+		// Checkout ref if provided
 		checkoutOptions = git.CheckoutOptions{Hash: plumbing.NewHash(ref), Force: true}
 	}
-
 	err = repo.Fetch(&git.FetchOptions{RemoteName: remoteName, Force: true, RefSpecs: []gitConfig.RefSpec{
 		gitConfig.RefSpec(ref + ":" + ref),
 	}})
 
-	if err != nil {
+	if err != nil && err != git.NoErrAlreadyUpToDate {
 		return "", err
 	}
 
@@ -111,25 +118,4 @@ func (g gitPlugin) Update(ref string) (string, error) {
 
 	hash, err := repo.ResolveRevision(plumbing.Revision("HEAD"))
 	return hash.String(), err
-}
-
-func pluginDefaultBranch(repo *git.Repository) (ref string, err error) {
-	remote, err := repo.Remote(remoteName)
-	if err != nil {
-		return ref, err
-	}
-
-	refs, err := remote.List(&git.ListOptions{})
-	if err != nil {
-		return ref, err
-	}
-
-	for _, r := range refs {
-		if r.Name().IsBranch() {
-			segments := strings.Split(r.Name().String(), "/")
-			ref = segments[len(segments)-1]
-		}
-	}
-
-	return ref, err
 }
