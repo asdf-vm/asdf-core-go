@@ -1,12 +1,13 @@
 package git
 
 import (
-	"asdf/plugins/plugintest"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -72,4 +73,135 @@ func TestGitPluginRemoteURL(t *testing.T) {
 	url, err := plugin.RemoteURL()
 	assert.Nil(t, err)
 	assert.NotZero(t, url)
+}
+
+func TestGitPluginUpdate(t *testing.T) {
+	tempDir := t.TempDir()
+	directory := filepath.Join(tempDir, testPluginName)
+
+	plugin := NewGitPlugin(directory)
+
+	err := plugin.Clone(testRepo)
+	assert.Nil(t, err)
+
+	t.Run("returns error when plugin with name does not exist", func(t *testing.T) {
+		nonexistantPath := filepath.Join(tempDir, "nonexistant")
+		nonexistantPlugin := NewGitPlugin(nonexistantPath)
+		updatedToRef, err := nonexistantPlugin.Update("")
+
+		assert.NotNil(t, err)
+		assert.Equal(t, updatedToRef, "")
+		expectedErrMsg := "unable to open plugin: repository does not exist"
+		assert.ErrorContains(t, err, expectedErrMsg)
+	})
+
+	t.Run("returns error when plugin repo does not exist", func(t *testing.T) {
+		badPluginName := "badplugin"
+		fmt.Printf("tempDir %#+v\n", tempDir)
+		badPluginDir := filepath.Join(tempDir, badPluginName)
+		os.MkdirAll(badPluginDir, 0777)
+		fmt.Printf("badPluginDir %#+v\n", badPluginDir)
+		badPlugin := NewGitPlugin(badPluginDir)
+
+		updatedToRef, err := badPlugin.Update("")
+
+		assert.NotNil(t, err)
+		assert.Equal(t, updatedToRef, "")
+		expectedErrMsg := "unable to open plugin: repository does not exist"
+		assert.ErrorContains(t, err, expectedErrMsg)
+	})
+
+	t.Run("does not return error when plugin is already updated", func(t *testing.T) {
+		// update plugin twice to test already updated case
+		updatedToRef, err := plugin.Update("")
+		assert.Nil(t, err)
+		updatedToRef2, err := plugin.Update("")
+		assert.Nil(t, err)
+		assert.Equal(t, updatedToRef, updatedToRef2)
+	})
+
+	t.Run("updates plugin when plugin when plugin exists", func(t *testing.T) {
+		latestHash, err := getCurrentCommit(directory)
+		assert.Nil(t, err)
+
+		_, err = checkoutPreviousCommit(directory)
+		assert.Nil(t, err)
+
+		updatedToRef, err := plugin.Update("")
+		assert.Nil(t, err)
+		assert.Equal(t, latestHash, updatedToRef)
+
+		currentHash, err := getCurrentCommit(directory)
+		assert.Nil(t, err)
+		assert.Equal(t, latestHash, currentHash)
+	})
+
+	t.Run("Returns error when specified ref does not exist", func(t *testing.T) {
+		ref := "non-existant"
+		updatedToRef, err := plugin.Update(ref)
+		assert.Equal(t, updatedToRef, "")
+		expectedErrMsg := "couldn't find remote ref \"non-existant\""
+		assert.ErrorContains(t, err, expectedErrMsg)
+
+	})
+
+	t.Run("updates plugin to ref when plugin with name and ref exist", func(t *testing.T) {
+		ref := "master"
+
+		hash, err := GetCommit(directory, ref)
+		assert.Nil(t, err)
+
+		updatedToRef, err := plugin.Update(ref)
+		assert.Nil(t, err)
+		assert.Equal(t, hash, updatedToRef)
+
+		// Check that plugin was updated to ref
+		latestHash, err := getCurrentCommit(directory)
+		assert.Nil(t, err)
+		assert.Equal(t, hash, latestHash)
+	})
+}
+
+func getCurrentCommit(path string) (string, error) {
+	return GetCommit(path, "HEAD")
+}
+
+func GetCommit(path, revision string) (string, error) {
+	repo, err := git.PlainOpen(path)
+
+	if err != nil {
+		return "", err
+	}
+
+	hash, err := repo.ResolveRevision(plumbing.Revision(revision))
+
+	return hash.String(), err
+}
+
+func checkoutPreviousCommit(path string) (string, error) {
+	repo, err := git.PlainOpen(path)
+
+	if err != nil {
+		return "", err
+	}
+
+	previousHash, err := repo.ResolveRevision(plumbing.Revision("HEAD~"))
+
+	if err != nil {
+		return "", err
+	}
+
+	worktree, err := repo.Worktree()
+
+	if err != nil {
+		return "", err
+	}
+
+	err = worktree.Reset(&git.ResetOptions{Commit: *previousHash})
+
+	if err != nil {
+		return "", err
+	}
+
+	return previousHash.String(), nil
 }
