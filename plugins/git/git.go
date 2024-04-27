@@ -38,9 +38,8 @@ func (g GitPlugin) Clone(pluginURL string) error {
 }
 
 func (g GitPlugin) Head() (string, error) {
-	repo, err := git.PlainOpen(g.directory)
+	repo, err := gitOpen(g.directory)
 
-	// TODO: Improve these error messages
 	if err != nil {
 		return "", err
 	}
@@ -54,9 +53,8 @@ func (g GitPlugin) Head() (string, error) {
 }
 
 func (g GitPlugin) RemoteURL() (string, error) {
-	repo, err := git.PlainOpen(g.directory)
+	repo, err := gitOpen(g.directory)
 
-	// TODO: Improve these error messages
 	if err != nil {
 		return "", err
 	}
@@ -70,10 +68,10 @@ func (g GitPlugin) RemoteURL() (string, error) {
 }
 
 func (g GitPlugin) Update(ref string) (string, error) {
-	repo, err := git.PlainOpen(g.directory)
+	repo, err := gitOpen(g.directory)
 
 	if err != nil {
-		return "", fmt.Errorf("unable to open plugin: %w", err)
+		return "", err
 	}
 
 	var checkoutOptions git.CheckoutOptions
@@ -118,4 +116,14 @@ func (g GitPlugin) Update(ref string) (string, error) {
 
 	hash, err := repo.ResolveRevision(plumbing.Revision("HEAD"))
 	return hash.String(), err
+}
+
+func gitOpen(directory string) (*git.Repository, error) {
+	repo, err := git.PlainOpen(directory)
+
+	if err != nil {
+		return repo, fmt.Errorf("unable to open plugin Git repository: %w", err)
+	}
+
+	return repo, nil
 }

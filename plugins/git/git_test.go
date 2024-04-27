@@ -91,7 +91,7 @@ func TestGitPluginUpdate(t *testing.T) {
 
 		assert.NotNil(t, err)
 		assert.Equal(t, updatedToRef, "")
-		expectedErrMsg := "unable to open plugin: repository does not exist"
+		expectedErrMsg := "unable to open plugin Git repository: repository does not exist"
 		assert.ErrorContains(t, err, expectedErrMsg)
 	})
 
@@ -107,7 +107,7 @@ func TestGitPluginUpdate(t *testing.T) {
 
 		assert.NotNil(t, err)
 		assert.Equal(t, updatedToRef, "")
-		expectedErrMsg := "unable to open plugin: repository does not exist"
+		expectedErrMsg := "unable to open plugin Git repository: repository does not exist"
 		assert.ErrorContains(t, err, expectedErrMsg)
 	})
 
