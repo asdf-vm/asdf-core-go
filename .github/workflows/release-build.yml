@@ -93,7 +93,7 @@ jobs:
       -
         name: Run GoReleaser
         # Downgraded to version 4 to get snapshot feature working
-        uses: goreleaser/goreleaser-action@v4
+        uses: goreleaser/goreleaser-action@v6
         with:
           version: latest
           args: release --clean --snapshot
