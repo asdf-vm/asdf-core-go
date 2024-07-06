@@ -182,6 +182,19 @@ func TestRemove(t *testing.T) {
 		assert.NotNil(t, err)
 		assert.True(t, os.IsNotExist(err))
 	})
+
+	t.Run("removes plugin download dir when passed name of installed plugin", func(t *testing.T) {
+		err := Add(conf, testPluginName, testRepo)
+		assert.Nil(t, err)
+
+		err = Remove(conf, testPluginName)
+		assert.Nil(t, err)
+
+		downloadDir := PluginDownloadDirectory(testDataDir, testPluginName)
+		_, err = os.Stat(downloadDir)
+		assert.NotNil(t, err)
+		assert.True(t, os.IsNotExist(err))
+	})
 }
 
 func TestUpdate(t *testing.T) {

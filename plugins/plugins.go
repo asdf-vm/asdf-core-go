@@ -221,8 +221,16 @@ func Remove(config config.Config, pluginName string) error {
 	}
 
 	pluginDir := PluginDirectory(config.DataDir, pluginName)
+	downloadDir := PluginDownloadDirectory(config.DataDir, pluginName)
 
-	return os.RemoveAll(pluginDir)
+	err = os.RemoveAll(downloadDir)
+	err2 := os.RemoveAll(pluginDir)
+
+	if err != nil {
+		return err
+	}
+
+	return err2
 }
 
 // Update a plugin to a specific ref, or if no ref provided update to latest
@@ -267,6 +275,10 @@ func directoryExists(dir string) (bool, error) {
 // if it were installed
 func PluginDirectory(dataDir, pluginName string) string {
 	return filepath.Join(DataDirectory(dataDir), pluginName)
+}
+
+func PluginDownloadDirectory(dataDir, pluginName string) string {
+	return filepath.Join(dataDir, "downloads", pluginName)
 }
 
 // DataDirectory returns the path to the plugin directory inside the data
