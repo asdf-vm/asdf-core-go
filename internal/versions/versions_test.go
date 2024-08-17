@@ -37,8 +37,6 @@ func TestInstallOneVersion(t *testing.T) {
 		stdout, stderr := buildOutputs()
 		err := InstallOneVersion(conf, plugin, "latest", false, &stdout, &stderr)
 		assert.Nil(t, err)
-		//assert.IsType(t, UninstallableVersion{}, err)
-		//t.Fatal("not implemented")
 	})
 
 	t.Run("returns error when version doesn't exist", func(t *testing.T) {

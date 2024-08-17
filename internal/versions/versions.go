@@ -23,6 +23,7 @@ const (
 	dataDirDownloads        = "downloads"
 	dataDirInstalls         = "installs"
 	defaultQuery            = "[0-9]"
+	latestFilterRegex       = "(?i)(^Available versions:|-src|-dev|-latest|-stm|[-\\.]rc|-milestone|-alpha|-beta|[-\\.]pre|-next|(a|b|c)[0-9]+|snapshot|master)"
 	noLatestVersionErrMsg   = "no latest version found"
 )
 
@@ -118,8 +119,11 @@ func InstallOneVersion(conf config.Config, plugin plugins.Plugin, version string
 	return nil
 }
 
+// Latest invokes the plugin's latest-stable callback if it exists and returns
+// the version it returns. If the callback is missing it invokes the list-all
+// callback and returns the last version matching the query, if a query is
+// provided.
 func Latest(plugin plugins.Plugin, query string) (versions []string, err error) {
-
 	if query == "" {
 		query = defaultQuery
 	}
@@ -134,12 +138,11 @@ func Latest(plugin plugins.Plugin, query string) (versions []string, err error) 
 		}
 
 		allVersions, err := AllVersionsFiltered(plugin, query)
-
 		if err != nil {
 			return versions, err
 		}
 
-		versions = filterByRegex(allVersions, "(?i)(^Available versions:|-src|-dev|-latest|-stm|[-\\.]rc|-milestone|-alpha|-beta|[-\\.]pre|-next|(a|b|c)[0-9]+|snapshot|master)", false)
+		versions = filterByRegex(allVersions, latestFilterRegex, false)
 
 		if len(versions) < 1 {
 			return versions, nil
@@ -169,6 +172,8 @@ func AllVersions(plugin plugins.Plugin) (versions []string, err error) {
 	return versions, err
 }
 
+// AllVersionsFiltered returns a list of existing versions that match a regex
+// query provided by the user.
 func AllVersionsFiltered(plugin plugins.Plugin, query string) (versions []string, err error) {
 	all, err := AllVersions(plugin)
 	if err != nil {
