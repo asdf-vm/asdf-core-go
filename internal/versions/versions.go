@@ -107,12 +107,62 @@ func InstallOneVersion(conf config.Config, plugin plugins.Plugin, version string
 	return nil
 }
 
-func downloadPath(conf config.Config, plugin plugins.Plugin, version string) string {
-	return filepath.Join(conf.DataDir, dataDirDownloads, plugin.Name, version)
+func Latest(plugin plugins.Plugin, query string) (versions []string, err error) {
+
+	if query == "" {
+		query = defaultQuery
+	}
+
+	var stdOut strings.Builder
+	var stdErr strings.Builder
+
+	err = plugin.RunCallback("latest-stable", []string{query}, map[string]string{}, &stdOut, &stdErr)
+	if err != nil {
+		if _, ok := err.(plugins.NoCallbackError); !ok {
+			return versions, err
+		}
+
+		// compute latest version manually
+		// get all versi
+		//versions=$(list_all_command "$plugin_name" "$query" |
+		//  grep -ivE "(^Available versions:|-src|-dev|-latest|-stm|[-\\.]rc|-milestone|-alpha|-beta|[-\\.]pre|-next|(a|b|c)[0-9]+|snapshot|master)" |
+		//  sed 's/^[[:space:]]\+//' |
+		//  tail -1)
+		return versions, nil
+	}
+
+	// parse stdOut and return version
+	versions = strings.Split(stdOut.String(), " ")
+	return versions, nil
 }
 
-func installPath(conf config.Config, plugin plugins.Plugin, version string) string {
-	return filepath.Join(conf.DataDir, dataDirInstalls, plugin.Name, version)
+// ListAll returns a slice of all available versions for the tool managed by
+// the given plugin by invoking the plugin's list-all callback
+func ListAll(plugin plugins.Plugin) (versions []string, err error) {
+	var stdout strings.Builder
+	var stderr strings.Builder
+
+	err = plugin.RunCallback("list-all", []string{}, map[string]string{}, &stdout, &stderr)
+	if err != nil {
+		return versions, err
+	}
+
+	versions = parseVersions(stdout.String())
+
+	return versions, err
+}
+
+// future refactoring opportunity: this function is an exact copy of
+// resolve.parseVersion
+func parseVersions(rawVersions string) []string {
+	var versions []string
+	for _, version := range strings.Split(rawVersions, " ") {
+		version = strings.TrimSpace(version)
+		if len(version) > 0 {
+			versions = append(versions, version)
+		}
+	}
+	return versions
 }
 
 // ParseString parses a version string into versionType and version components
@@ -123,4 +173,12 @@ func ParseString(version string) (string, string) {
 	}
 
 	return "version", version
+}
+
+func downloadPath(conf config.Config, plugin plugins.Plugin, version string) string {
+	return filepath.Join(conf.DataDir, dataDirDownloads, plugin.Name, version)
+}
+
+func installPath(conf config.Config, plugin plugins.Plugin, version string) string {
+	return filepath.Join(conf.DataDir, dataDirInstalls, plugin.Name, version)
 }

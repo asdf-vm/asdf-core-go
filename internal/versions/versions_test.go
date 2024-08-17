@@ -148,6 +148,31 @@ func TestParseString(t *testing.T) {
 	})
 }
 
+func TestListAll(t *testing.T) {
+	pluginName := "list-all-test"
+	conf, _ := generateConfig(t)
+	_, err := repotest.InstallPlugin("dummy_plugin", conf.DataDir, pluginName)
+	assert.Nil(t, err)
+	plugin := plugins.New(conf, pluginName)
+
+	t.Run("returns slice of available versions from plugin", func(t *testing.T) {
+		versions, err := ListAll(plugin)
+		assert.Nil(t, err)
+		assert.Equal(t, versions, []string{"1.0.0", "1.1.0", "2.0.0"})
+	})
+
+	t.Run("returns error when callback missing", func(t *testing.T) {
+		pluginName = "list-all-fail"
+		_, err := repotest.InstallPlugin("dummy_plugin_no_download", conf.DataDir, pluginName)
+		assert.Nil(t, err)
+		plugin := plugins.New(conf, pluginName)
+
+		versions, err := ListAll(plugin)
+		assert.Equal(t, err.(plugins.NoCallbackError).Error(), "Plugin named list-all-fail does not have a callback named list-all")
+		assert.Empty(t, versions)
+	})
+}
+
 // Helper functions
 func buildOutputs() (strings.Builder, strings.Builder) {
 	var stdout strings.Builder
