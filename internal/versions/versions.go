@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"asdf/config"
@@ -122,23 +123,29 @@ func Latest(plugin plugins.Plugin, query string) (versions []string, err error) 
 			return versions, err
 		}
 
-		// compute latest version manually
-		// get all versi
-		//versions=$(list_all_command "$plugin_name" "$query" |
-		//  grep -ivE "(^Available versions:|-src|-dev|-latest|-stm|[-\\.]rc|-milestone|-alpha|-beta|[-\\.]pre|-next|(a|b|c)[0-9]+|snapshot|master)" |
-		//  sed 's/^[[:space:]]\+//' |
-		//  tail -1)
-		return versions, nil
+		allVersions, err := AllVersionsFiltered(plugin, query)
+
+		if err != nil {
+			return versions, err
+		}
+
+		versions = filterByRegex(allVersions, "(?i)(^Available versions:|-src|-dev|-latest|-stm|[-\\.]rc|-milestone|-alpha|-beta|[-\\.]pre|-next|(a|b|c)[0-9]+|snapshot|master)", false)
+
+		if len(versions) < 1 {
+			return versions, nil
+		}
+
+		return []string{versions[len(versions)-1]}, nil
 	}
 
 	// parse stdOut and return version
-	versions = strings.Split(stdOut.String(), " ")
+	versions = parseVersions(stdOut.String())
 	return versions, nil
 }
 
-// ListAll returns a slice of all available versions for the tool managed by
+// AllVersions returns a slice of all available versions for the tool managed by
 // the given plugin by invoking the plugin's list-all callback
-func ListAll(plugin plugins.Plugin) (versions []string, err error) {
+func AllVersions(plugin plugins.Plugin) (versions []string, err error) {
 	var stdout strings.Builder
 	var stderr strings.Builder
 
@@ -150,6 +157,26 @@ func ListAll(plugin plugins.Plugin) (versions []string, err error) {
 	versions = parseVersions(stdout.String())
 
 	return versions, err
+}
+
+func AllVersionsFiltered(plugin plugins.Plugin, query string) (versions []string, err error) {
+	all, err := AllVersions(plugin)
+	if err != nil {
+		return versions, err
+	}
+
+	return filterByRegex(all, query, true), err
+}
+
+func filterByRegex(allVersions []string, pattern string, include bool) (versions []string) {
+	for _, version := range allVersions {
+		match, _ := regexp.MatchString(pattern, version)
+		if match && include || !match && !include {
+			versions = append(versions, version)
+		}
+	}
+
+	return versions
 }
 
 // future refactoring opportunity: this function is an exact copy of
