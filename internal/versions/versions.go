@@ -22,6 +22,8 @@ const (
 	uninstallableVersionMsg = "uninstallable version: system"
 	dataDirDownloads        = "downloads"
 	dataDirInstalls         = "installs"
+	defaultQuery            = "[0-9]"
+	noLatestVersionErrMsg   = "no latest version found"
 )
 
 // UninstallableVersion is an error returned if someone tries to install the
@@ -51,8 +53,16 @@ func InstallOneVersion(conf config.Config, plugin plugins.Plugin, version string
 	}
 
 	if version == latestVersion {
-		// TODO: Implement this
-		return errors.New("not implemented")
+		versions, err := Latest(plugin, "")
+		if err != nil {
+			return err
+		}
+
+		if len(versions) < 1 {
+			return errors.New(noLatestVersionErrMsg)
+		}
+
+		version = versions[0]
 	}
 
 	downloadDir := downloadPath(conf, plugin, version)

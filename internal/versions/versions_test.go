@@ -32,9 +32,14 @@ func TestInstallOneVersion(t *testing.T) {
 		assert.IsType(t, UninstallableVersion{}, err)
 	})
 
-	//t.Run("installs latest version of tool when version is 'latest'", func(t *testing.T) {
-	//  t.Fatal("not implemented")
-	//})
+	t.Run("installs latest version of tool when version is 'latest'", func(t *testing.T) {
+		conf, plugin := generateConfig(t)
+		stdout, stderr := buildOutputs()
+		err := InstallOneVersion(conf, plugin, "latest", false, &stdout, &stderr)
+		assert.Nil(t, err)
+		//assert.IsType(t, UninstallableVersion{}, err)
+		//t.Fatal("not implemented")
+	})
 
 	t.Run("returns error when version doesn't exist", func(t *testing.T) {
 		version := "other-dummy"
@@ -163,7 +168,6 @@ func TestLatest(t *testing.T) {
 		assert.Nil(t, err)
 		assert.Equal(t, []string{"4.0.0"}, versions)
 	})
-
 }
 
 func TestParseString(t *testing.T) {
