@@ -1,5 +1,5 @@
-// Package cmd contains the asdf CLI command code
-package cmd
+// Package cli contains the asdf CLI command code
+package cli
 
 import (
 	"errors"
