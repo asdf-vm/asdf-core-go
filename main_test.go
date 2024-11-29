@@ -123,8 +123,8 @@ func runBatsFile(t *testing.T, dir, filename string) {
 	err := cmd.Run()
 	if err != nil {
 		// If command fails print both stderr and stdout
-		fmt.Println("stdout:", stdout.String())
-		fmt.Println("stderr:", stderr.String())
+		t.Log("stdout:", stdout.String())
+		t.Log("stderr:", stderr.String())
 		t.Fatal("bats command failed to run test file successfully")
 
 		return
