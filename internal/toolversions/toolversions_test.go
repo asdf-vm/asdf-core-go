@@ -104,7 +104,7 @@ func TestUnique(t *testing.T) {
 	})
 }
 
-func TestfindToolVersionsInContent(t *testing.T) {
+func TestFindToolVersionsInContent(t *testing.T) {
 	t.Run("returns empty list with found false when empty content", func(t *testing.T) {
 		versions, found := findToolVersionsInContent("", "ruby")
 		assert.False(t, found)
@@ -124,7 +124,7 @@ func TestfindToolVersionsInContent(t *testing.T) {
 	})
 }
 
-func TestgetAllToolsAndVersionsInContent(t *testing.T) {
+func TestGetAllToolsAndVersionsInContent(t *testing.T) {
 	tests := []struct {
 		desc  string
 		input string

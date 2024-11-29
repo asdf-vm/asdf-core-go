@@ -8,10 +8,10 @@ import (
 	"os"
 	"path/filepath"
 
-	"asdf/internal/config"
-	"asdf/internal/data"
-	"asdf/internal/plugins"
-	"asdf/internal/toolversions"
+	"github.com/asdf-vm/asdf-core-go/internal/config"
+	"github.com/asdf-vm/asdf-core-go/internal/data"
+	"github.com/asdf-vm/asdf-core-go/internal/plugins"
+	"github.com/asdf-vm/asdf-core-go/internal/toolversions"
 )
 
 // Installed returns a slice of all installed versions for a given plugin

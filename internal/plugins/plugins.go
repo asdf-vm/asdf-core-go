@@ -11,12 +11,12 @@ import (
 	"regexp"
 	"strings"
 
-	"asdf/internal/config"
-	"asdf/internal/data"
-	"asdf/internal/execute"
-	"asdf/internal/git"
-	"asdf/internal/hook"
-	"asdf/internal/pluginindex"
+	"github.com/asdf-vm/asdf-core-go/internal/config"
+	"github.com/asdf-vm/asdf-core-go/internal/data"
+	"github.com/asdf-vm/asdf-core-go/internal/execute"
+	"github.com/asdf-vm/asdf-core-go/internal/git"
+	"github.com/asdf-vm/asdf-core-go/internal/hook"
+	"github.com/asdf-vm/asdf-core-go/internal/pluginindex"
 )
 
 // NewPluginAlreadyExists generates a new PluginAlreadyExists error instance for

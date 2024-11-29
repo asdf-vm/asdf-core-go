@@ -6,10 +6,9 @@ import (
 	"strings"
 	"testing"
 
-	"asdf/internal/config"
-	"asdf/internal/data"
-	"asdf/repotest"
-
+	"github.com/asdf-vm/asdf-core-go/internal/config"
+	"github.com/asdf-vm/asdf-core-go/internal/data"
+	"github.com/asdf-vm/asdf-core-go/repotest"
 	"github.com/stretchr/testify/assert"
 )
 
