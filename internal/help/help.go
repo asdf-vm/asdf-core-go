@@ -8,9 +8,9 @@ import (
 	"io"
 	"os"
 
-	"asdf/internal/config"
-	"asdf/internal/plugins"
-	"asdf/internal/toolversions"
+	"github.com/asdf-vm/asdf-core-go/internal/config"
+	"github.com/asdf-vm/asdf-core-go/internal/plugins"
+	"github.com/asdf-vm/asdf-core-go/internal/toolversions"
 )
 
 //go:embed help.txt

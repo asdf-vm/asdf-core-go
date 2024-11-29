@@ -11,14 +11,13 @@ import (
 	"slices"
 	"strings"
 
-	"asdf/internal/config"
-	"asdf/internal/hook"
-	"asdf/internal/installs"
-	"asdf/internal/paths"
-	"asdf/internal/plugins"
-	"asdf/internal/resolve"
-	"asdf/internal/toolversions"
-
+	"github.com/asdf-vm/asdf-core-go/internal/config"
+	"github.com/asdf-vm/asdf-core-go/internal/hook"
+	"github.com/asdf-vm/asdf-core-go/internal/installs"
+	"github.com/asdf-vm/asdf-core-go/internal/paths"
+	"github.com/asdf-vm/asdf-core-go/internal/plugins"
+	"github.com/asdf-vm/asdf-core-go/internal/resolve"
+	"github.com/asdf-vm/asdf-core-go/internal/toolversions"
 	"golang.org/x/sys/unix"
 )
 

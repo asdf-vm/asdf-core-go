@@ -8,13 +8,12 @@ import (
 	"strings"
 	"testing"
 
-	"asdf/internal/config"
-	"asdf/internal/installs"
-	"asdf/internal/installtest"
-	"asdf/internal/plugins"
-	"asdf/internal/toolversions"
-	"asdf/repotest"
-
+	"github.com/asdf-vm/asdf-core-go/internal/config"
+	"github.com/asdf-vm/asdf-core-go/internal/installs"
+	"github.com/asdf-vm/asdf-core-go/internal/installtest"
+	"github.com/asdf-vm/asdf-core-go/internal/plugins"
+	"github.com/asdf-vm/asdf-core-go/internal/toolversions"
+	"github.com/asdf-vm/asdf-core-go/repotest"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/sys/unix"
 )
