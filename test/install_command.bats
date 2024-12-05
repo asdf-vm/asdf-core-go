@@ -318,6 +318,8 @@ EOM
 
 #  run asdf install dummy-no-download 1.0.0
 #  [ "$status" -eq 0 ]
-
+#
+#  run asdf install dummy-no-download 1.0.0
+#  [ "$status" -eq 0 ]
 #  [[ "$output" == *'asdf: Warn:'*'not be preserved'* ]]
 #}
