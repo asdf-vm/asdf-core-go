@@ -20,6 +20,7 @@ import (
 	"asdf/internal/hook"
 	"asdf/internal/info"
 	"asdf/internal/installs"
+	"asdf/internal/pluginindex"
 	"asdf/internal/plugins"
 	"asdf/internal/resolve"
 	"asdf/internal/shims"
@@ -172,6 +173,14 @@ func Execute(version string) {
 						},
 						Action: func(cCtx *cli.Context) error {
 							return pluginListCommand(cCtx, logger)
+						},
+						Subcommands: []*cli.Command{
+							{
+								Name: "all",
+								Action: func(_ *cli.Context) error {
+									return pluginListAllCommand(logger)
+								},
+							},
 						},
 					},
 					{
@@ -626,6 +635,64 @@ func pluginListCommand(cCtx *cli.Context, logger *log.Logger) error {
 	}
 
 	return nil
+}
+
+func pluginListAllCommand(logger *log.Logger) error {
+	conf, err := config.LoadConfig()
+	if err != nil {
+		logger.Printf("error loading config: %s", err)
+		return err
+	}
+
+	disableRepo, err := conf.DisablePluginShortNameRepository()
+	if err != nil {
+		logger.Printf("unable to check config")
+		return err
+	}
+	if disableRepo {
+		logger.Printf("Short-name plugin repository is disabled")
+	}
+
+	lastCheckDuration := 0
+	// We don't care about errors here as we can use the default value
+	checkDuration, _ := conf.PluginRepositoryLastCheckDuration()
+
+	if !checkDuration.Never {
+		lastCheckDuration = checkDuration.Every
+	}
+
+	index := pluginindex.Build(conf.DataDir, "https://github.com/asdf-vm/asdf-plugins.git", false, lastCheckDuration)
+	availablePlugins, err := index.Get()
+	if err != nil {
+		logger.Printf("error loading plugin index: %s", err)
+		return err
+	}
+
+	installedPlugins, err := plugins.List(conf, true, false)
+	if err != nil {
+		logger.Printf("error loading plugin list: %s", err)
+		return err
+	}
+
+	for _, availablePlugin := range availablePlugins {
+		if pluginInstalled(availablePlugin, installedPlugins) {
+			logger.Printf("%s\t\t*%s\n", availablePlugin.Name, availablePlugin.Url)
+		} else {
+			logger.Printf("%s\t\t%s\n", availablePlugin.Name, availablePlugin.Url)
+		}
+	}
+
+	return nil
+}
+
+func pluginInstalled(plugin pluginindex.Plugin, installedPlugins []plugins.Plugin) bool {
+	for _, installedPlugin := range installedPlugins {
+		if installedPlugin.Name == plugin.Name && installedPlugin.URL == plugin.Url {
+			return true
+		}
+	}
+
+	return false
 }
 
 func infoCommand(conf config.Config, version string) error {
