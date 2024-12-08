@@ -90,7 +90,7 @@ func TestGet(t *testing.T) {
 		pluginIndex := New(dir, mockIndexURL, true, 0, &MockIndex{Directory: dir})
 		plugins, err := pluginIndex.Get()
 		assert.Nil(t, err)
-		assert.Equal(t, plugins, []Plugin{Plugin{Name: "elixir", Url: "https://github.com/asdf-vm/asdf-elixir.git"}})
+		assert.Equal(t, plugins, []Plugin{{Name: "elixir", URL: "https://github.com/asdf-vm/asdf-elixir.git"}})
 	})
 }
 

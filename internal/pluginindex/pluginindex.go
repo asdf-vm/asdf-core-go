@@ -29,9 +29,10 @@ type PluginIndex struct {
 	updateDurationMinutes int
 }
 
+// Plugin represents a plugin listed on a plugin index.
 type Plugin struct {
 	Name string
-	Url  string
+	URL  string
 }
 
 // Build returns a complete PluginIndex struct with default values set
@@ -175,7 +176,7 @@ func getPlugins(dir string) (plugins []Plugin, err error) {
 				return plugins, err
 			}
 
-			plugins = append(plugins, Plugin{Name: file.Name(), Url: url})
+			plugins = append(plugins, Plugin{Name: file.Name(), URL: url})
 		}
 	}
 

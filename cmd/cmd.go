@@ -661,7 +661,7 @@ func pluginListAllCommand(logger *log.Logger) error {
 		lastCheckDuration = checkDuration.Every
 	}
 
-	index := pluginindex.Build(conf.DataDir, "https://github.com/asdf-vm/asdf-plugins.git", false, lastCheckDuration)
+	index := pluginindex.Build(conf.DataDir, conf.PluginIndexURL, false, lastCheckDuration)
 	availablePlugins, err := index.Get()
 	if err != nil {
 		logger.Printf("error loading plugin index: %s", err)
@@ -677,9 +677,9 @@ func pluginListAllCommand(logger *log.Logger) error {
 	w := tabwriter.NewWriter(os.Stdout, 16, 0, 1, ' ', 0)
 	for _, availablePlugin := range availablePlugins {
 		if pluginInstalled(availablePlugin, installedPlugins) {
-			fmt.Fprintf(w, "%s\t\t*%s\n", availablePlugin.Name, availablePlugin.Url)
+			fmt.Fprintf(w, "%s\t\t*%s\n", availablePlugin.Name, availablePlugin.URL)
 		} else {
-			fmt.Fprintf(w, "%s\t\t%s\n", availablePlugin.Name, availablePlugin.Url)
+			fmt.Fprintf(w, "%s\t\t%s\n", availablePlugin.Name, availablePlugin.URL)
 		}
 	}
 	w.Flush()
@@ -689,7 +689,7 @@ func pluginListAllCommand(logger *log.Logger) error {
 
 func pluginInstalled(plugin pluginindex.Plugin, installedPlugins []plugins.Plugin) bool {
 	for _, installedPlugin := range installedPlugins {
-		if installedPlugin.Name == plugin.Name && installedPlugin.URL == plugin.Url {
+		if installedPlugin.Name == plugin.Name && installedPlugin.URL == plugin.URL {
 			return true
 		}
 	}
