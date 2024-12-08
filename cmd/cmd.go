@@ -651,6 +651,8 @@ func pluginListAllCommand(logger *log.Logger) error {
 	}
 	if disableRepo {
 		logger.Printf("Short-name plugin repository is disabled")
+		os.Exit(1)
+		return nil
 	}
 
 	lastCheckDuration := 0
