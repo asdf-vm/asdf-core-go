@@ -674,13 +674,15 @@ func pluginListAllCommand(logger *log.Logger) error {
 		return err
 	}
 
+	w := tabwriter.NewWriter(os.Stdout, 16, 0, 1, ' ', 0)
 	for _, availablePlugin := range availablePlugins {
 		if pluginInstalled(availablePlugin, installedPlugins) {
-			logger.Printf("%s\t\t*%s\n", availablePlugin.Name, availablePlugin.Url)
+			fmt.Fprintf(w, "%s\t\t*%s\n", availablePlugin.Name, availablePlugin.Url)
 		} else {
-			logger.Printf("%s\t\t%s\n", availablePlugin.Name, availablePlugin.Url)
+			fmt.Fprintf(w, "%s\t\t%s\n", availablePlugin.Name, availablePlugin.Url)
 		}
 	}
+	w.Flush()
 
 	return nil
 }
