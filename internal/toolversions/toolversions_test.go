@@ -133,7 +133,7 @@ func TestGetAllToolsAndVersionsInContent(t *testing.T) {
 		{
 			desc:  "returns empty list with found true and no error when empty content",
 			input: "",
-			want:  []ToolVersions{},
+			want:  []ToolVersions(nil),
 		},
 		{
 			desc:  "returns list with one tool when single tool in content",
@@ -153,6 +153,10 @@ func TestGetAllToolsAndVersionsInContent(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
 			toolsAndVersions := getAllToolsAndVersionsInContent(tt.input)
+			if len(tt.want) == 0 {
+				assert.Empty(t, toolsAndVersions)
+				return
+			}
 			assert.Equal(t, tt.want, toolsAndVersions)
 		})
 	}

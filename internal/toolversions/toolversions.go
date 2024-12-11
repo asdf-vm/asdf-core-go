@@ -165,7 +165,7 @@ func FormatForFS(version Version) string {
 // removing spaces and comments which are marked by '#'
 func readLines(content string) (lines []string) {
 	for _, line := range strings.Split(content, "\n") {
-		line = strings.SplitN(line, "#", 2)[0]
+		line, _, _ = strings.Cut(line, "#")
 		line = strings.TrimSpace(line)
 		if len(line) > 0 {
 			lines = append(lines, line)
