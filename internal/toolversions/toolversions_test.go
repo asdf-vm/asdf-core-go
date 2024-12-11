@@ -288,3 +288,16 @@ func TestFormatForFS(t *testing.T) {
 		assert.Equal(t, FormatForFS(Version{Type: "ref", Value: "foobar"}), "ref-foobar")
 	})
 }
+
+func BenchmarkUnique(b *testing.B) {
+	versions := []ToolVersions{
+		{Name: "foo", Versions: []string{"1"}},
+		{Name: "bar", Versions: []string{"2"}},
+		{Name: "foo", Versions: []string{"2"}},
+		{Name: "bar", Versions: []string{"2"}},
+	}
+
+	for i := 0; i < b.N; i++ {
+		Unique(versions)
+	}
+}
