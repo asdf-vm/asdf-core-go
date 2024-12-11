@@ -9,9 +9,9 @@ import (
 	"path"
 	"strings"
 
-	"github.com/asdf-vm/asdf-core-go/internal/config"
-	"github.com/asdf-vm/asdf-core-go/internal/plugins"
-	"github.com/asdf-vm/asdf-core-go/internal/toolversions"
+	"github.com/asdf-vm/asdf/internal/config"
+	"github.com/asdf-vm/asdf/internal/plugins"
+	"github.com/asdf-vm/asdf/internal/toolversions"
 )
 
 // ToolVersions represents a tool along with versions specified for it

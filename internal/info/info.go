@@ -7,9 +7,9 @@ import (
 	"os"
 	"text/tabwriter"
 
-	"github.com/asdf-vm/asdf-core-go/internal/config"
-	"github.com/asdf-vm/asdf-core-go/internal/execute"
-	"github.com/asdf-vm/asdf-core-go/internal/plugins"
+	"github.com/asdf-vm/asdf/internal/config"
+	"github.com/asdf-vm/asdf/internal/execute"
+	"github.com/asdf-vm/asdf/internal/plugins"
 )
 
 // Print info output to STDOUT

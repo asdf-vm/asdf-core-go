@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/asdf-vm/asdf-core-go/internal/git"
+	"github.com/asdf-vm/asdf/internal/git"
 	"gopkg.in/ini.v1"
 )
 

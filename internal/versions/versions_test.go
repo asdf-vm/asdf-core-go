@@ -7,9 +7,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/asdf-vm/asdf-core-go/internal/config"
-	"github.com/asdf-vm/asdf-core-go/internal/plugins"
-	"github.com/asdf-vm/asdf-core-go/repotest"
+	"github.com/asdf-vm/asdf/internal/config"
+	"github.com/asdf-vm/asdf/internal/plugins"
+	"github.com/asdf-vm/asdf/repotest"
 	"github.com/stretchr/testify/assert"
 )
 

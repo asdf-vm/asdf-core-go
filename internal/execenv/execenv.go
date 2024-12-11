@@ -7,8 +7,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/asdf-vm/asdf-core-go/internal/execute"
-	"github.com/asdf-vm/asdf-core-go/internal/plugins"
+	"github.com/asdf-vm/asdf/internal/execute"
+	"github.com/asdf-vm/asdf/internal/plugins"
 )
 
 const execEnvCallbackName = "exec-env"

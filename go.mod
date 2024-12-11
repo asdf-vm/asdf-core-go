@@ -1,4 +1,4 @@
-module github.com/asdf-vm/asdf-core-go
+module github.com/asdf-vm/asdf
 
 go 1.21.5
 

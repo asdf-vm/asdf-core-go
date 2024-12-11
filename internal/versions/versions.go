@@ -10,13 +10,13 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/asdf-vm/asdf-core-go/internal/config"
-	"github.com/asdf-vm/asdf-core-go/internal/hook"
-	"github.com/asdf-vm/asdf-core-go/internal/installs"
-	"github.com/asdf-vm/asdf-core-go/internal/plugins"
-	"github.com/asdf-vm/asdf-core-go/internal/resolve"
-	"github.com/asdf-vm/asdf-core-go/internal/shims"
-	"github.com/asdf-vm/asdf-core-go/internal/toolversions"
+	"github.com/asdf-vm/asdf/internal/config"
+	"github.com/asdf-vm/asdf/internal/hook"
+	"github.com/asdf-vm/asdf/internal/installs"
+	"github.com/asdf-vm/asdf/internal/plugins"
+	"github.com/asdf-vm/asdf/internal/resolve"
+	"github.com/asdf-vm/asdf/internal/shims"
+	"github.com/asdf-vm/asdf/internal/toolversions"
 )
 
 const (

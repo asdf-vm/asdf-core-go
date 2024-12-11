@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/asdf-vm/asdf-core-go/internal/git"
-	"github.com/asdf-vm/asdf-core-go/repotest"
+	"github.com/asdf-vm/asdf/internal/git"
+	"github.com/asdf-vm/asdf/repotest"
 	"github.com/stretchr/testify/assert"
 )
 
