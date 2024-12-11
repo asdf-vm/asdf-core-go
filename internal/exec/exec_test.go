@@ -14,6 +14,7 @@ func execit() int {
 	cmdPath, _ := exec.LookPath(os.Args[1])
 	err := Exec(cmdPath, os.Args[2:], os.Environ())
 	if err != nil {
+		// TODO: Use testing logging system instead of direct printing.
 		fmt.Printf("Err: %#+v\n", err.Error())
 	}
 
