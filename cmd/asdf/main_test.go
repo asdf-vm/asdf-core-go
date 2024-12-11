@@ -31,9 +31,9 @@ func TestBatsTests(t *testing.T) {
 		runBatsFile(t, dir, "info_command.bats")
 	})
 
-	//t.Run("install_command", func(t *testing.T) {
-	//  runBatsFile(t, dir, "install_command.bats")
-	//})
+	t.Run("install_command", func(t *testing.T) {
+		runBatsFile(t, dir, "install_command.bats")
+	})
 
 	t.Run("latest_command", func(t *testing.T) {
 		runBatsFile(t, dir, "latest_command.bats")
@@ -47,21 +47,21 @@ func TestBatsTests(t *testing.T) {
 		runBatsFile(t, dir, "plugin_add_command.bats")
 	})
 
-	//t.Run("plugin_extension_command", func(t *testing.T) {
-	//  runBatsFile(t, dir, "plugin_extension_command.bats")
-	//})
+	t.Run("plugin_extension_command", func(t *testing.T) {
+		runBatsFile(t, dir, "plugin_extension_command.bats")
+	})
 
-	//t.Run("plugin_list_all_command", func(t *testing.T) {
-	//  runBatsFile(t, dir, "plugin_list_all_command.bats")
-	//})
+	t.Run("plugin_list_all_command", func(t *testing.T) {
+		runBatsFile(t, dir, "plugin_list_all_command.bats")
+	})
 
 	t.Run("plugin_remove_command", func(t *testing.T) {
 		runBatsFile(t, dir, "plugin_remove_command.bats")
 	})
 
-	//t.Run("plugin_test_command", func(t *testing.T) {
-	//  runBatsFile(t, dir, "plugin_test_command.bats")
-	//})
+	t.Run("plugin_test_command", func(t *testing.T) {
+		runBatsFile(t, dir, "plugin_test_command.bats")
+	})
 
 	//t.Run("plugin_update_command", func(t *testing.T) {
 	//  runBatsFile(t, dir, "plugin_update_command.bats")
@@ -79,9 +79,9 @@ func TestBatsTests(t *testing.T) {
 		runBatsFile(t, dir, "shim_env_command.bats")
 	})
 
-	//t.Run("shim_exec", func(t *testing.T) {
-	//  runBatsFile(t, dir, "shim_exec.bats")
-	//})
+	t.Run("shim_exec", func(t *testing.T) {
+		runBatsFile(t, dir, "shim_exec.bats")
+	})
 
 	t.Run("shim_versions_command", func(t *testing.T) {
 		runBatsFile(t, dir, "shim_versions_command.bats")
@@ -91,6 +91,10 @@ func TestBatsTests(t *testing.T) {
 		runBatsFile(t, dir, "uninstall_command.bats")
 	})
 
+	// Version commands like `asdf global` and `asdf local` aren't going to be
+	// available, however it would be nice to still support environment variable
+	// versions, e.g. ASDF_RUBY_VERSION=2.0.0. Some of these tests could be
+	// enabled and implemented.
 	//t.Run("version_commands", func(t *testing.T) {
 	//  runBatsFile(t, dir, "version_commands.bats")
 	//})

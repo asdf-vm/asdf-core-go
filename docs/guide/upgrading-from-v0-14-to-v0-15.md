@@ -8,6 +8,11 @@ rather than a set of scripts.
 
 ## Breaking Changes
 
+### `download` is now a required callback for plugins
+
+Previously `download` was optional, now it is required. If a plugin lacks this
+callback any installs of any version of that plugin will fail.
+
 ### Hyphenated commands have been removed
 
 asdf version 0.14.1 and earlier supported by hyphenated and non-hyphenated
@@ -20,6 +25,7 @@ versions are supported. The affected commands:
 * `asdf plugin-list-all` -> `asdf plugin list all`
 * `asdf plugin-update` -> `asdf plugin update`
 * `asdf plugin-remove` -> `asdf plugin remove`
+* `asdf plugin-test` -> `asdf plugin test`
 * `asdf shim-versions` -> `asdf shimversions`
 
 ### `asdf global` and `asdf local` commands have been replaced by the `asdf set` command
@@ -44,6 +50,63 @@ not an executable. The new rewrite removes all shell code from asdf, and it is
 now a binary rather than a shell function, so setting environment variables
 directly in the shell is no longer possible.
 
+### Plugin extension commands must now be prefixed with `cmd`
+
+Previously plugin extension commands could be run like this:
+
+```
+asdf nodejs nodebuild --version
+```
+
+Now they must be prefixed with `cmd` to avoid causing confusion with built-in
+commands:
+
+```
+asdf cmd nodejs nodebuild --version
+```
+
+### Extension commands have been redesigned
+
+There are a number of breaking changes for plugin extension commands:
+
+* They must be runnable by `exec` syscall. If your extension commands are shell
+scripts in order to be run with `exec` they must start with a proper shebang
+line.
+* They can now be binaries or scripts in any language. It no
+longer makes sense to require a `.bash` extension as it is misleading.
+* They must have executable permission set.
+* They are no longer sourced by asdf as Bash scripts when they lack executable
+permission.
+
+Additionally, only the first argument after plugin name is used to determine
+the extension command to run. This means effectively there is the default
+`command` extension command that asdf defaults to when no command matching the
+first argument after plugin name is found. For example:
+
+```
+foo/
+  lib/commands/
+    command
+    command-bar
+    command-bat-man
+```
+
+Previously these scripts would work like this:
+
+```
+$ asdf cmd foo         # same as running `$ASDF_DATA_DIR/plugins/foo/lib/commands/command`
+$ asdf cmd foo bar     # same as running `$ASDF_DATA_DIR/plugins/foo/lib/commands/command-bar`
+$ asdf cmd foo bat man # same as running `$ASDF_DATA_DIR/plugins/foo/lib/commands/command-bat-man`
+```
+
+Now:
+
+```
+$ asdf cmd foo         # same as running `$ASDF_DATA_DIR/plugins/foo/lib/commands/command`
+$ asdf cmd foo bar     # same as running `$ASDF_DATA_DIR/plugins/foo/lib/commands/command-bar`
+$ asdf cmd foo bat man # same as running `$ASDF_DATA_DIR/plugins/foo/lib/commands/command bat man`
+```
+
 ### Executables Shims Resolve to Must Runnable by `syscall.Exec`
 
 The most obvious example of this breaking change are scripts that lack a proper
@@ -56,6 +119,17 @@ which cannot handle scripts lacking a shebang.
 In practice this isn't much of a problem. Most shell scripts DO contain a
 shebang line. If a tool managed by asdf provides scripts that don't have a
 shebang line one will need to be added to them.
+
+### Custom shim templates are no longer supported
+
+This was a rarely used feature. The only plugin maintained by the core team
+that used it was the Elixir plugin, and it no longer needs it. This feature
+was originally added so that shim that get evaluated by a program rather than
+executed contain code that is suitable for evaluation by a particular program
+(in the case of Elixir this was the `iex` shell). Upon further investigation
+it seems this feature only exists because the `PATH` for executables was
+sometimes improperly set to include the **shims** rather than the other
+**executables** for the selected version(s).
 
 ## Installation
 

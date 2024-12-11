@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"log"
 	"os"
 	"path/filepath"
@@ -17,8 +18,10 @@ import (
 	"github.com/asdf-vm/asdf/internal/execenv"
 	"github.com/asdf-vm/asdf/internal/execute"
 	"github.com/asdf-vm/asdf/internal/help"
+	"github.com/asdf-vm/asdf/internal/hook"
 	"github.com/asdf-vm/asdf/internal/info"
 	"github.com/asdf-vm/asdf/internal/installs"
+	"github.com/asdf-vm/asdf/internal/pluginindex"
 	"github.com/asdf-vm/asdf/internal/plugins"
 	"github.com/asdf-vm/asdf/internal/resolve"
 	"github.com/asdf-vm/asdf/internal/shims"
@@ -52,6 +55,14 @@ func Execute(version string) {
 		Usage:     "The multiple runtime version manager",
 		UsageText: usageText,
 		Commands: []*cli.Command{
+			{
+				Name: "cmd",
+				Action: func(cCtx *cli.Context) error {
+					args := cCtx.Args().Slice()
+
+					return extensionCommand(logger, args)
+				},
+			},
 			{
 				Name: "current",
 				Action: func(cCtx *cli.Context) error {
@@ -100,9 +111,16 @@ func Execute(version string) {
 			},
 			{
 				Name: "install",
+				Flags: []cli.Flag{
+					&cli.BoolFlag{
+						Name:  "keep-download",
+						Usage: "Whether or not to keep download directory after successful install",
+					},
+				},
 				Action: func(cCtx *cli.Context) error {
 					args := cCtx.Args()
-					return installCommand(logger, args.Get(0), args.Get(1))
+					keepDownload := cCtx.Bool("keep-download")
+					return installCommand(logger, args.Get(0), args.Get(1), keepDownload)
 				},
 			},
 			{
@@ -164,6 +182,14 @@ func Execute(version string) {
 						Action: func(cCtx *cli.Context) error {
 							return pluginListCommand(cCtx, logger)
 						},
+						Subcommands: []*cli.Command{
+							{
+								Name: "all",
+								Action: func(_ *cli.Context) error {
+									return pluginListAllCommand(logger)
+								},
+							},
+						},
 					},
 					{
 						Name: "remove",
@@ -183,6 +209,26 @@ func Execute(version string) {
 						Action: func(cCtx *cli.Context) error {
 							args := cCtx.Args()
 							return pluginUpdateCommand(cCtx, logger, args.Get(0), args.Get(1))
+						},
+					},
+					{
+						Name: "test",
+						Flags: []cli.Flag{
+							&cli.StringFlag{
+								Name:  "asdf-tool-version",
+								Usage: "The tool version to use during testing",
+							},
+							&cli.StringFlag{
+								Name:  "asdf-plugin-gitref",
+								Usage: "The plugin Git ref to test",
+							},
+						},
+						Action: func(cCtx *cli.Context) error {
+							toolVersion := cCtx.String("asdf-tool-version")
+							gitRef := cCtx.String("asdf-plugin-gitref")
+							args := cCtx.Args().Slice()
+							pluginTestCommand(logger, args, toolVersion, gitRef)
+							return nil
 						},
 					},
 				},
@@ -229,9 +275,7 @@ func Execute(version string) {
 			},
 		},
 		Action: func(_ *cli.Context) error {
-			// TODO: flesh this out
-			log.Print("Late but latest -- Rajinikanth")
-			return nil
+			return helpCommand(logger, version, "", "")
 		},
 	}
 
@@ -452,7 +496,57 @@ func execCommand(logger *log.Logger, command string, args []string) error {
 
 	env = execenv.MergeEnv(execenv.SliceToMap(os.Environ()), env)
 
+	err = hook.RunWithOutput(conf, fmt.Sprintf("pre_%s_%s", plugin.Name, filepath.Base(executable)), args, os.Stdout, os.Stderr)
+	if err != nil {
+		os.Exit(1)
+		return err
+	}
+
 	return exec.Exec(executable, args, execute.MapToSlice(env))
+}
+
+func extensionCommand(logger *log.Logger, args []string) error {
+	if len(args) < 1 {
+		err := errors.New("no plugin name specified")
+		logger.Printf("%s", err.Error())
+		return err
+	}
+
+	conf, err := config.LoadConfig()
+	if err != nil {
+		logger.Printf("error loading config: %s", err)
+		return err
+	}
+
+	pluginName := args[0]
+	plugin := plugins.New(conf, pluginName)
+
+	err = runExtensionCommand(plugin, args[1:], execenv.SliceToMap(os.Environ()))
+	logger.Printf("error running extension command: %s", err.Error())
+	return err
+}
+
+func runExtensionCommand(plugin plugins.Plugin, args []string, environment map[string]string) (err error) {
+	path := ""
+	if len(args) > 0 {
+		path, err = plugin.ExtensionCommandPath(args[0])
+
+		if err != nil {
+			path, err = plugin.ExtensionCommandPath("")
+			if err != nil {
+				return err
+			}
+		} else {
+			args = args[1:]
+		}
+	} else {
+		path, err = plugin.ExtensionCommandPath("")
+		if err != nil {
+			return err
+		}
+	}
+
+	return exec.Exec(path, args, execute.MapToSlice(environment))
 }
 
 func getExecutable(logger *log.Logger, conf config.Config, command string) (executable string, plugin plugins.Plugin, version string, err error) {
@@ -613,6 +707,68 @@ func pluginListCommand(cCtx *cli.Context, logger *log.Logger) error {
 	return nil
 }
 
+func pluginListAllCommand(logger *log.Logger) error {
+	conf, err := config.LoadConfig()
+	if err != nil {
+		logger.Printf("error loading config: %s", err)
+		return err
+	}
+
+	disableRepo, err := conf.DisablePluginShortNameRepository()
+	if err != nil {
+		logger.Printf("unable to check config")
+		return err
+	}
+	if disableRepo {
+		logger.Printf("Short-name plugin repository is disabled")
+		os.Exit(1)
+		return nil
+	}
+
+	lastCheckDuration := 0
+	// We don't care about errors here as we can use the default value
+	checkDuration, _ := conf.PluginRepositoryLastCheckDuration()
+
+	if !checkDuration.Never {
+		lastCheckDuration = checkDuration.Every
+	}
+
+	index := pluginindex.Build(conf.DataDir, conf.PluginIndexURL, false, lastCheckDuration)
+	availablePlugins, err := index.Get()
+	if err != nil {
+		logger.Printf("error loading plugin index: %s", err)
+		return err
+	}
+
+	installedPlugins, err := plugins.List(conf, true, false)
+	if err != nil {
+		logger.Printf("error loading plugin list: %s", err)
+		return err
+	}
+
+	w := tabwriter.NewWriter(os.Stdout, 15, 0, 1, ' ', 0)
+	for _, availablePlugin := range availablePlugins {
+		if pluginInstalled(availablePlugin, installedPlugins) {
+			fmt.Fprintf(w, "%s\t\t*%s\n", availablePlugin.Name, availablePlugin.URL)
+		} else {
+			fmt.Fprintf(w, "%s\t\t%s\n", availablePlugin.Name, availablePlugin.URL)
+		}
+	}
+	w.Flush()
+
+	return nil
+}
+
+func pluginInstalled(plugin pluginindex.Plugin, installedPlugins []plugins.Plugin) bool {
+	for _, installedPlugin := range installedPlugins {
+		if installedPlugin.Name == plugin.Name && installedPlugin.URL == plugin.URL {
+			return true
+		}
+	}
+
+	return false
+}
+
 func infoCommand(conf config.Config, version string) error {
 	return info.Print(conf, version)
 }
@@ -640,10 +796,16 @@ func helpCommand(logger *log.Logger, asdfVersion, tool, version string) error {
 		return err
 	}
 
-	err = help.Print(asdfVersion)
+	allPlugins, err := plugins.List(conf, false, false)
 	if err != nil {
 		os.Exit(1)
 	}
+
+	err = help.Print(asdfVersion, allPlugins)
+	if err != nil {
+		os.Exit(1)
+	}
+
 	return err
 }
 
@@ -679,6 +841,97 @@ func pluginUpdateCommand(cCtx *cli.Context, logger *log.Logger, pluginName, ref 
 	return err
 }
 
+func pluginTestCommand(l *log.Logger, args []string, _, _ string) {
+	conf, err := config.LoadConfig()
+	if err != nil {
+		l.Printf("error loading config: %s", err)
+		os.Exit(1)
+		return
+	}
+
+	if len(args) < 2 {
+		failTest(l, "please provide a plugin name and url")
+	}
+
+	name := args[0]
+	url := args[1]
+	testName := fmt.Sprintf("asdf-test-%s", name)
+
+	// Install plugin
+	err = plugins.Add(conf, testName, url)
+	if err != nil {
+		failTest(l, fmt.Sprintf("%s was not properly installed", name))
+	}
+
+	// Remove plugin
+	var blackhole strings.Builder
+	defer plugins.Remove(conf, testName, &blackhole, &blackhole)
+
+	// Assert callbacks are present
+	plugin := plugins.New(conf, testName)
+	files, err := os.ReadDir(filepath.Join(plugin.Dir, "bin"))
+	if _, ok := err.(*fs.PathError); ok {
+		failTest(l, "bin/ directory does not exist")
+	}
+
+	callbacks := []string{}
+	for _, file := range files {
+		callbacks = append(callbacks, file.Name())
+	}
+
+	for _, expectedCallback := range []string{"download", "install", "list-all"} {
+		if !slices.Contains(callbacks, expectedCallback) {
+			failTest(l, fmt.Sprintf("missing callback %s", expectedCallback))
+		}
+	}
+
+	allCallbacks := []string{"download", "install", "list-all", "latest-stable", "help.overview", "help.deps", "help.config", "help.links", "list-bin-paths", "exec-env", "exec-path", "uninstall", "list-legacy-filenames", "parse-legacy-file", "post-plugin-add", "post-plugin-update", "pre-plugin-remove"}
+
+	// Assert all callbacks present are executable
+	for _, file := range files {
+		// file is a callback...
+		if slices.Contains(allCallbacks, file.Name()) {
+			// check if it is executable
+			info, _ := file.Info()
+			if !(info.Mode()&0o111 != 0) {
+				failTest(l, fmt.Sprintf("callback lacks executable permission: %s", file.Name()))
+			}
+		}
+	}
+
+	// Assert has license
+	licensePath := filepath.Join(plugin.Dir, "LICENSE")
+	if _, err := os.Stat(licensePath); errors.Is(err, os.ErrNotExist) {
+		failTest(l, "LICENSE file must be present in the plugin repository")
+	}
+
+	bytes, err := os.ReadFile(licensePath)
+	if err != nil {
+		failTest(l, "LICENSE file must be present in the plugin repository")
+	}
+
+	// Validate license file not empty
+	if len(bytes) == 0 {
+		failTest(l, "LICENSE file in the plugin repository must not be empty")
+	}
+
+	// Validate it returns at least one available version
+	var output strings.Builder
+	err = plugin.RunCallback("list-all", []string{}, map[string]string{}, &output, &blackhole)
+	if err != nil {
+		failTest(l, "Unable to list available versions")
+	}
+
+	if len(strings.Split(output.String(), " ")) < 1 {
+		failTest(l, "list-all did not return any version")
+	}
+}
+
+func failTest(logger *log.Logger, msg string) {
+	logger.Printf("FAILED: %s", msg)
+	os.Exit(1)
+}
+
 func formatUpdateResult(logger *log.Logger, pluginName, updatedToRef string, err error) {
 	if err != nil {
 		logger.Printf("failed to update %s due to error: %s\n", pluginName, err)
@@ -689,7 +942,7 @@ func formatUpdateResult(logger *log.Logger, pluginName, updatedToRef string, err
 	logger.Printf("updated %s to ref %s\n", pluginName, updatedToRef)
 }
 
-func installCommand(logger *log.Logger, toolName, version string) error {
+func installCommand(logger *log.Logger, toolName, version string, keepDownload bool) error {
 	conf, err := config.LoadConfig()
 	if err != nil {
 		logger.Printf("error loading config: %s", err)
@@ -706,8 +959,12 @@ func installCommand(logger *log.Logger, toolName, version string) error {
 		errs := versions.InstallAll(conf, dir, os.Stdout, os.Stderr)
 		if len(errs) > 0 {
 			for _, err := range errs {
-				os.Stderr.Write([]byte(err.Error()))
-				os.Stderr.Write([]byte("\n"))
+				// Don't print error if no version set, this just means the current
+				// dir doesn't use a particular plugin that is installed.
+				if _, ok := err.(versions.NoVersionSetError); !ok {
+					os.Stderr.Write([]byte(err.Error()))
+					os.Stderr.Write([]byte("\n"))
+				}
 			}
 
 			filtered := filterInstallErrors(errs)
@@ -723,15 +980,23 @@ func installCommand(logger *log.Logger, toolName, version string) error {
 		if version == "" {
 			err = versions.Install(conf, plugin, dir, os.Stdout, os.Stderr)
 			if err != nil {
+				if _, ok := err.(versions.NoVersionSetError); ok {
+					logger.Printf("No versions specified for %s in config files or environment", toolName)
+					os.Exit(1)
+				}
+
 				return err
 			}
 		} else {
 			parsedVersion := toolversions.ParseFromCliArg(version)
 
 			if parsedVersion.Type == "latest" {
-				err = versions.InstallVersion(conf, plugin, version, parsedVersion.Value, os.Stdout, os.Stderr)
+				err = versions.InstallVersion(conf, plugin, parsedVersion, os.Stdout, os.Stderr)
 			} else {
-				err = versions.InstallOneVersion(conf, plugin, version, os.Stdout, os.Stderr)
+				// Adding this here to get tests passing. The other versions.Install*
+				// calls here could have a keepDownload argument added as well. PR
+				// welcome!
+				err = versions.InstallOneVersion(conf, plugin, version, keepDownload, os.Stdout, os.Stderr)
 			}
 
 			if err != nil {
@@ -1109,7 +1374,7 @@ func whereCommand(logger *log.Logger, tool, versionStr string) error {
 
 func reshimToolVersion(conf config.Config, tool, versionStr string, out io.Writer, errOut io.Writer) error {
 	version := toolversions.Parse(versionStr)
-	return shims.GenerateForVersion(conf, plugins.New(conf, tool), version.Type, version.Value, out, errOut)
+	return shims.GenerateForVersion(conf, plugins.New(conf, tool), version, out, errOut)
 }
 
 func latestForPlugin(conf config.Config, toolName, pattern string, showStatus bool) error {

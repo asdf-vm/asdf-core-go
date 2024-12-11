@@ -79,6 +79,25 @@ func TestFindExecutable(t *testing.T) {
 		assert.Equal(t, filepath.Base(executable), "ls")
 		assert.NotEqual(t, executable, path)
 	})
+
+	t.Run("returns path to executable on path when path version set", func(t *testing.T) {
+		// write system version to version file
+		toolpath := filepath.Join(currentDir, ".tool-versions")
+		dir := installs.InstallPath(conf, plugin, toolversions.Version{Type: "version", Value: "1.1.0"})
+		pathVersion := fmt.Sprintf("path:%s/./", dir)
+		assert.Nil(t, os.WriteFile(toolpath, []byte(fmt.Sprintf("lua %s\n", pathVersion)), 0o666))
+		assert.Nil(t, GenerateAll(conf, &stdout, &stderr))
+
+		executable, gotPlugin, version, found, err := FindExecutable(conf, "dummy", currentDir)
+		assert.Equal(t, plugin, gotPlugin)
+		assert.Equal(t, version, pathVersion)
+		assert.True(t, found)
+		assert.Nil(t, err)
+
+		// see that it actually returns path to system ls
+		assert.Equal(t, filepath.Base(executable), "dummy")
+		assert.True(t, strings.HasPrefix(executable, dir))
+	})
 }
 
 func TestGetExecutablePath(t *testing.T) {
@@ -87,25 +106,40 @@ func TestGetExecutablePath(t *testing.T) {
 	installVersion(t, conf, plugin, version.Value)
 
 	t.Run("returns path to executable", func(t *testing.T) {
-		path, err := GetExecutablePath(conf, plugin, "dummy", version.Value)
+		path, err := GetExecutablePath(conf, plugin, "dummy", version)
 		assert.Nil(t, err)
 		assert.Equal(t, filepath.Base(path), "dummy")
 		assert.Equal(t, filepath.Base(filepath.Dir(filepath.Dir(path))), version.Value)
 	})
 
 	t.Run("returns error when executable with name not found", func(t *testing.T) {
-		path, err := GetExecutablePath(conf, plugin, "foo", version.Value)
+		path, err := GetExecutablePath(conf, plugin, "foo", version)
 		assert.ErrorContains(t, err, "executable not found")
 		assert.Equal(t, path, "")
 	})
 
 	t.Run("returns custom path when plugin has exec-path callback", func(t *testing.T) {
 		// Create exec-path callback
-		installDummyExecPathScript(t, conf, plugin, version, "dummy")
+		installDummyExecPathScript(t, conf, plugin, version, "dummy", "echo 'bin/custom/dummy'")
 
-		path, err := GetExecutablePath(conf, plugin, "dummy", version.Value)
+		path, err := GetExecutablePath(conf, plugin, "dummy", version)
 		assert.Nil(t, err)
 		assert.Equal(t, filepath.Base(filepath.Dir(path)), "custom")
+		// Doesn't contain any trailing whitespace (newlines as the last char are common)
+		assert.Equal(t, path, strings.TrimSpace(path))
+	})
+
+	t.Run("returns default path when plugin has exec-path callback that prints third argument", func(t *testing.T) {
+		// Create exec-path callback
+		installDummyExecPathScript(t, conf, plugin, version, "dummy", "echo \"$3\"")
+
+		path, err := GetExecutablePath(conf, plugin, "dummy", version)
+		assert.Nil(t, err)
+		assert.Equal(t, filepath.Base(path), "dummy")
+		assert.Equal(t, filepath.Base(filepath.Dir(path)), "bin")
+
+		// Doesn't contain any trailing whitespace (newlines as the last char are common)
+		assert.Equal(t, path, strings.TrimSpace(path))
 	})
 }
 
@@ -113,7 +147,7 @@ func TestRemoveAll(t *testing.T) {
 	version := "1.1.0"
 	conf, plugin := generateConfig(t)
 	installVersion(t, conf, plugin, version)
-	executables, err := ToolExecutables(conf, plugin, "version", version)
+	executables, err := ToolExecutables(conf, plugin, toolversions.Version{Type: "version", Value: version})
 	assert.Nil(t, err)
 	stdout, stderr := buildOutputs()
 
@@ -136,7 +170,7 @@ func TestGenerateAll(t *testing.T) {
 	installVersion(t, conf, plugin, version)
 	installPlugin(t, conf, "dummy_plugin", "ruby")
 	installVersion(t, conf, plugin, version2)
-	executables, err := ToolExecutables(conf, plugin, "version", version)
+	executables, err := ToolExecutables(conf, plugin, toolversions.Version{Type: "version", Value: version})
 	assert.Nil(t, err)
 	stdout, stderr := buildOutputs()
 
@@ -165,7 +199,7 @@ func TestGenerateForPluginVersions(t *testing.T) {
 	conf, plugin := generateConfig(t)
 	installVersion(t, conf, plugin, version)
 	installVersion(t, conf, plugin, version2)
-	executables, err := ToolExecutables(conf, plugin, "version", version)
+	executables, err := ToolExecutables(conf, plugin, toolversions.Version{Type: "version", Value: version})
 	assert.Nil(t, err)
 	stdout, stderr := buildOutputs()
 
@@ -197,17 +231,17 @@ func TestGenerateForPluginVersions(t *testing.T) {
 }
 
 func TestGenerateForVersion(t *testing.T) {
-	version := "1.1.0"
-	version2 := "2.0.0"
+	version := toolversions.Version{Type: "version", Value: "1.1.0"}
+	version2 := toolversions.Version{Type: "version", Value: "2.0.0"}
 	conf, plugin := generateConfig(t)
-	installVersion(t, conf, plugin, version)
-	installVersion(t, conf, plugin, version2)
-	executables, err := ToolExecutables(conf, plugin, "version", version)
+	installVersion(t, conf, plugin, version.Value)
+	installVersion(t, conf, plugin, version2.Value)
+	executables, err := ToolExecutables(conf, plugin, version)
 	assert.Nil(t, err)
 
 	t.Run("generates shim script for every executable in version", func(t *testing.T) {
 		stdout, stderr := buildOutputs()
-		assert.Nil(t, GenerateForVersion(conf, plugin, "version", version, &stdout, &stderr))
+		assert.Nil(t, GenerateForVersion(conf, plugin, version, &stdout, &stderr))
 
 		// check for generated shims
 		for _, executable := range executables {
@@ -219,8 +253,8 @@ func TestGenerateForVersion(t *testing.T) {
 
 	t.Run("updates existing shims for every executable in version", func(t *testing.T) {
 		stdout, stderr := buildOutputs()
-		assert.Nil(t, GenerateForVersion(conf, plugin, "version", version, &stdout, &stderr))
-		assert.Nil(t, GenerateForVersion(conf, plugin, "version", version2, &stdout, &stderr))
+		assert.Nil(t, GenerateForVersion(conf, plugin, version, &stdout, &stderr))
+		assert.Nil(t, GenerateForVersion(conf, plugin, version2, &stdout, &stderr))
 
 		// check for generated shims
 		for _, executable := range executables {
@@ -232,12 +266,12 @@ func TestGenerateForVersion(t *testing.T) {
 }
 
 func TestWrite(t *testing.T) {
-	version := "1.1.0"
-	version2 := "2.0.0"
+	version := toolversions.Version{Type: "version", Value: "1.1.0"}
+	version2 := toolversions.Version{Type: "version", Value: "2.0.0"}
 	conf, plugin := generateConfig(t)
-	installVersion(t, conf, plugin, version)
-	installVersion(t, conf, plugin, version2)
-	executables, err := ToolExecutables(conf, plugin, "version", version)
+	installVersion(t, conf, plugin, version.Value)
+	installVersion(t, conf, plugin, version2.Value)
+	executables, err := ToolExecutables(conf, plugin, version)
 	executable := executables[0]
 	assert.Nil(t, err)
 
@@ -297,7 +331,7 @@ func TestToolExecutables(t *testing.T) {
 	installVersion(t, conf, plugin, version.Value)
 
 	t.Run("returns list of executables for plugin", func(t *testing.T) {
-		executables, err := ToolExecutables(conf, plugin, "version", version.Value)
+		executables, err := ToolExecutables(conf, plugin, version)
 		assert.Nil(t, err)
 
 		var filenames []string
@@ -312,7 +346,7 @@ func TestToolExecutables(t *testing.T) {
 	t.Run("returns list of executables for version installed in arbitrary directory", func(t *testing.T) {
 		// Reference regular install by path to validate this behavior
 		path := installs.InstallPath(conf, plugin, version)
-		executables, err := ToolExecutables(conf, plugin, "path", path)
+		executables, err := ToolExecutables(conf, plugin, toolversions.Version{Type: "path", Value: path})
 		assert.Nil(t, err)
 
 		var filenames []string
@@ -328,7 +362,7 @@ func TestToolExecutables(t *testing.T) {
 		// foo is first in list returned by list-bin-paths but doesn't exist, do
 		// we still get the executables in the bin/ dir?
 		repotest.WritePluginCallback(plugin.Dir, "list-bin-paths", "#!/usr/bin/env bash\necho 'foo bin'")
-		executables, err := ToolExecutables(conf, plugin, "version", version.Value)
+		executables, err := ToolExecutables(conf, plugin, version)
 		assert.Nil(t, err)
 
 		var filenames []string
@@ -406,10 +440,10 @@ func generateConfig(t *testing.T) (config.Config, plugins.Plugin) {
 	return conf, installPlugin(t, conf, "dummy_plugin", testPluginName)
 }
 
-func installDummyExecPathScript(t *testing.T, conf config.Config, plugin plugins.Plugin, version toolversions.Version, name string) {
+func installDummyExecPathScript(t *testing.T, conf config.Config, plugin plugins.Plugin, version toolversions.Version, name, script string) {
 	t.Helper()
 	execPath := filepath.Join(plugin.Dir, "bin", "exec-path")
-	contents := fmt.Sprintf("#!/usr/bin/env bash\necho 'bin/custom/%s'", name)
+	contents := fmt.Sprintf("#!/usr/bin/env bash\n%s\n", script)
 	err := os.WriteFile(execPath, []byte(contents), 0o777)
 	assert.Nil(t, err)
 
