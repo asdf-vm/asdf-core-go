@@ -179,21 +179,10 @@ func findToolVersionsInContent(content, toolName string) (versions []string, fou
 
 func getAllToolsAndVersionsInContent(content string) (toolVersions []ToolVersions) {
 	for _, line := range readLines(content) {
-		tokens := parseLine(line)
+		tokens := strings.Fields(line)
 		newTool := ToolVersions{Name: tokens[0], Versions: tokens[1:]}
 		toolVersions = append(toolVersions, newTool)
 	}
 
 	return toolVersions
-}
-
-func parseLine(line string) (tokens []string) {
-	for _, token := range strings.Split(line, " ") {
-		token = strings.TrimSpace(token)
-		if len(token) > 0 {
-			tokens = append(tokens, token)
-		}
-	}
-
-	return tokens
 }
