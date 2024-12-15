@@ -5,6 +5,7 @@ package toolversions
 
 import (
 	"fmt"
+	"iter"
 	"os"
 	"slices"
 	"strings"
@@ -42,7 +43,7 @@ func GetAllToolsAndVersions(filepath string) (toolVersions []ToolVersions, err e
 		return toolVersions, err
 	}
 
-	toolVersions = getAllToolsAndVersionsInContent(string(content))
+	toolVersions = slices.Collect(getAllToolsAndVersionsInContent(string(content)))
 	return toolVersions, nil
 }
 
@@ -155,20 +156,21 @@ func FormatForFS(version Version) string {
 
 // readLines reads all the lines in a given file
 // removing spaces and comments which are marked by '#'
-func readLines(content string) (lines []string) {
-	for _, line := range strings.Split(content, "\n") {
-		line, _, _ = strings.Cut(line, "#")
-		line = strings.TrimSpace(line)
-		if len(line) > 0 {
-			lines = append(lines, line)
+func readLines(content string) iter.Seq[string] {
+	return func(yield func(string) bool) {
+		for _, line := range strings.Split(content, "\n") {
+			line, _, _ = strings.Cut(line, "#")
+			line = strings.TrimSpace(line)
+			if len(line) > 0 && !yield(line) {
+				return
+			}
 		}
 	}
-	return
 }
 
 func findToolVersionsInContent(content, toolName string) (versions []string, found bool) {
 	toolVersions := getAllToolsAndVersionsInContent(content)
-	for _, tool := range toolVersions {
+	for tool := range toolVersions {
 		if tool.Name == toolName {
 			return tool.Versions, true
 		}
@@ -177,12 +179,14 @@ func findToolVersionsInContent(content, toolName string) (versions []string, fou
 	return versions, found
 }
 
-func getAllToolsAndVersionsInContent(content string) (toolVersions []ToolVersions) {
-	for _, line := range readLines(content) {
-		tokens := strings.Fields(line)
-		newTool := ToolVersions{Name: tokens[0], Versions: tokens[1:]}
-		toolVersions = append(toolVersions, newTool)
+func getAllToolsAndVersionsInContent(content string) iter.Seq[ToolVersions] {
+	return func(yield func(ToolVersions) bool) {
+		for line := range readLines(content) {
+			tokens := strings.Fields(line)
+			newTool := ToolVersions{Name: tokens[0], Versions: tokens[1:]}
+			if !yield(newTool) {
+				return
+			}
+		}
 	}
-
-	return toolVersions
 }

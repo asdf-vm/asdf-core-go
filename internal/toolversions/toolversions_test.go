@@ -3,6 +3,7 @@ package toolversions
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -152,7 +153,7 @@ func TestGetAllToolsAndVersionsInContent(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
-			toolsAndVersions := getAllToolsAndVersionsInContent(tt.input)
+			toolsAndVersions := slices.Collect(getAllToolsAndVersionsInContent(tt.input))
 			if len(tt.want) == 0 {
 				assert.Empty(t, toolsAndVersions)
 				return
