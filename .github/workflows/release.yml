@@ -8,9 +8,12 @@ on:
 jobs:
   release:
     runs-on: ubuntu-latest
+    outputs:
+      tag_name: ${{ steps.create-release.outputs.tag_name }}
     steps:
       - uses: GoogleCloudPlatform/release-please-action@v4
         name: create release
+        id: create-release
         with:
           release-type: simple
           bump-minor-pre-major: true # remove this to enable breaking changes causing 1.0.0 tag
